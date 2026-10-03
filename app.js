@@ -196,7 +196,7 @@ function openForm(date) {
   dlg.innerHTML = `<form id="sform"><h2>${s ? 'Modifier la séance' : 'Nouvelle séance'}</h2>
     <label for="f-date">Date</label><input id="f-date" type="date" value="${esc(date)}" max="${today()}" required>
     <div class="hint" id="h-goal"></div>
-    <label for="f-dist">Distance nagée (m)</label><input id="f-dist" type="number" inputmode="numeric" min="1" step="1" value="${s ? s.distance : ''}" required>
+    <label for="f-dist">Distance nagée (m)</label><input id="f-dist" type="number" inputmode="numeric" min="1" step="1" value="${s ? s.distance : ''}" required autofocus>
     <div class="hint" id="h-eval" hidden></div>
     <label for="f-sec">Temps tête sous l'eau (secondes)</label><input id="f-sec" type="number" inputmode="numeric" min="0" step="1" value="${s?.seconds ?? ''}">
     <div class="row conv"><div><label for="f-str">…ou mouvements de brasse</label><input id="f-str" type="number" inputmode="numeric" min="0" step="1"></div><div class="note" id="h-sec">Convertis à ${num(sps)} s par mouvement</div></div>
@@ -207,6 +207,7 @@ function openForm(date) {
   dlg.dataset.orig = s ? s.id : '';
   dlg.dataset.sps = sps;
   dlg.showModal();
+  $('#f-dist').focus(); // sinon le focus va à la date et iOS ouvre le calendrier
   refreshHints();
 }
 
