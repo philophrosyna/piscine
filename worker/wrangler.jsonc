@@ -3,6 +3,6 @@
   "main": "src/index.js",
   "compatibility_date": "2026-09-01",
   "kv_namespaces": [
-    { "binding": "KV", "id": "A_REMPLACER_APRES_CREATION_DU_KV" }
+    { "binding": "KV", "id": "3d2a12486a5646e49dfa2a87039f71a5" }
   ]
 }
