@@ -32,7 +32,8 @@ export function mergeDb(a, b) {
 
 /* ---------- Séances ---------- */
 // Une séance par jour : l'identifiant est la date (AAAA-MM-JJ).
-// { id, date, distance (m), strokes (mouvements tête sous l'eau, ou null), secPerStroke, note, updatedAt, deleted? }
+// { id, date, distance (m), seconds (temps tête sous l'eau en secondes, ou null), note, updatedAt, deleted? }
+// Les mouvements de brasse ne sont pas conservés : ils sont convertis en secondes à la saisie.
 export const liveSessions = db => (db.sessions || []).filter(s => !s.deleted).sort((a, b) => a.date.localeCompare(b.date));
 
 // Dernière séance strictement avant une date.
@@ -62,6 +63,15 @@ export function streak(db) {
 
 export const estSeconds = (strokes, sps) => strokes == null || strokes === '' ? null : Math.round(Number(strokes) * Number(sps));
 
+// Anciennes séances saisies en mouvements : converties en secondes (et le champ mouvements retiré).
+export function normalizeSession(s, defaultSps) {
+  if (s.strokes === undefined && s.secPerStroke === undefined) return s;
+  const { strokes, secPerStroke, ...rest } = s;
+  if (rest.seconds == null && strokes != null) rest.seconds = estSeconds(strokes, secPerStroke ?? defaultSps);
+  return rest;
+}
+export const normalizeDb = db => ({ ...db, sessions: (db.sessions || []).map(s => normalizeSession(s, db.settings?.secPerStroke ?? DEFAULT_SETTINGS.secPerStroke)) });
+
 export function fmtDuration(sec) {
   if (sec == null) return '';
   if (sec < 60) return `${sec} s`;
@@ -72,7 +82,7 @@ export function records(db) {
   let dist = null, str = null;
   for (const s of liveSessions(db)) {
     if (!dist || s.distance > dist.distance) dist = s;
-    if (s.strokes != null && (!str || s.strokes > str.strokes)) str = s;
+    if (s.seconds != null && (!str || s.seconds > str.seconds)) str = s;
   }
   return { dist, str };
 }

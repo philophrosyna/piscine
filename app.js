@@ -1,6 +1,6 @@
 import { API_URL, APP_VERSION } from './config.js';
 import {
-  DEFAULT_SETTINGS, EMPTY_DB, mergeDb, liveSessions, prevSession, evaluate, streak, records,
+  DEFAULT_SETTINGS, EMPTY_DB, mergeDb, normalizeDb, liveSessions, prevSession, evaluate, streak, records,
   estSeconds, fmtDuration, ymd, pad, parse,
 } from './shared.js';
 
@@ -23,7 +23,7 @@ let dirty = true; // modifications locales pas encore envoyées au serveur
 function loadDb() {
   try {
     const d = JSON.parse(localStorage.getItem(DB_KEY));
-    if (d) return { sessions: d.sessions || [], settings: { ...DEFAULT_SETTINGS, ...(d.settings || {}) } };
+    if (d) return normalizeDb({ sessions: d.sessions || [], settings: { ...DEFAULT_SETTINGS, ...(d.settings || {}) } });
   } catch (e) { /* données illisibles : on repart de zéro */ }
   return EMPTY_DB();
 }
@@ -139,8 +139,7 @@ function viewStats() {
   const recent = list.slice(-30);
   const rec = records(db);
   const totalDist = list.reduce((n, s) => n + s.distance, 0);
-  const withStr = recent.filter(s => s.strokes != null);
-  const sps = db.settings.secPerStroke;
+  const withSec = recent.filter(s => s.seconds != null);
 
   const byMonth = {};
   for (const s of list) {
@@ -152,15 +151,14 @@ function viewStats() {
     const label = new Date(Number(k.slice(0, 4)), Number(k.slice(5)) - 1, 1).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
     return `<tr><td>${esc(label)}</td><td>${byMonth[k].n}</td><td>${byMonth[k].d} m</td><td>${Math.round(byMonth[k].d / byMonth[k].n)} m</td></tr>`;
   }).join('');
-  const strSec = rec.str ? estSeconds(rec.str.strokes, rec.str.secPerStroke ?? sps) : null;
 
   return `<div class="card stats3">
       <div><b>${list.length}</b><span>séances</span></div><div><b>${totalDist} m</b><span>au total</span></div><div><b>${streak(db)}</b><span>d'affilée sans recul</span></div></div>
     <div class="card"><h2>Records</h2>
       <div class="rec-row"><span class="ico">🏆</span><div>Distance : <b>${rec.dist.distance} m</b><div class="note">${esc(fmtDate(rec.dist.date))}</div></div></div>
-      <div class="rec-row"><span class="ico">🫧</span><div>Tête sous l'eau : ${rec.str ? `<b>${rec.str.strokes} mouvements</b><div class="note">≈ ${esc(fmtDuration(strSec))} · ${esc(fmtDate(rec.str.date))}</div>` : '<span class="note">pas encore noté</span>'}</div></div></div>
+      <div class="rec-row"><span class="ico">🫧</span><div>Tête sous l'eau : ${rec.str ? `<b>${esc(fmtDuration(rec.str.seconds))}</b><div class="note">${esc(fmtDate(rec.str.date))}</div>` : '<span class="note">pas encore noté</span>'}</div></div></div>
     <div class="card"><h2>Distance par séance (m)</h2>${chart(recent.map(s => ({ label: fmtShort(s.date), v: s.distance })), 'm')}</div>
-    <div class="card"><h2>Mouvements tête sous l'eau</h2>${chart(withStr.map(s => ({ label: fmtShort(s.date), v: s.strokes })), 'mouvements')}</div>
+    <div class="card"><h2>Temps tête sous l'eau (s)</h2>${chart(withSec.map(s => ({ label: fmtShort(s.date), v: s.seconds })), 's')}</div>
     <div class="card"><h2>Par mois</h2><table class="months"><tr><th>Mois</th><th>Séances</th><th>Total</th><th>Moyenne</th></tr>${rows}</table></div>`;
 }
 
@@ -193,15 +191,15 @@ function viewSettings() {
 /* ---------- Formulaire de séance ---------- */
 function openForm(date) {
   const s = sessionOn(date);
-  const sps = s?.secPerStroke ?? db.settings.secPerStroke;
+  const sps = db.settings.secPerStroke;
   const dlg = $('#dlg');
   dlg.innerHTML = `<form id="sform"><h2>${s ? 'Modifier la séance' : 'Nouvelle séance'}</h2>
     <label for="f-date">Date</label><input id="f-date" type="date" value="${esc(date)}" max="${today()}" required>
     <div class="hint" id="h-goal"></div>
     <label for="f-dist">Distance nagée (m)</label><input id="f-dist" type="number" inputmode="numeric" min="1" step="1" value="${s ? s.distance : ''}" required>
     <div class="hint" id="h-eval" hidden></div>
-    <label for="f-str">Mouvements de brasse, tête sous l'eau (d'affilée)</label><input id="f-str" type="number" inputmode="numeric" min="0" step="1" value="${s?.strokes ?? ''}">
-    <div class="note" id="h-sec"></div>
+    <label for="f-sec">Temps tête sous l'eau (secondes)</label><input id="f-sec" type="number" inputmode="numeric" min="0" step="1" value="${s?.seconds ?? ''}">
+    <div class="row conv"><div><label for="f-str">…ou mouvements de brasse</label><input id="f-str" type="number" inputmode="numeric" min="0" step="1"></div><div class="note" id="h-sec">Convertis à ${num(sps)} s par mouvement</div></div>
     <label for="f-note">Note (facultatif)</label><textarea id="f-note">${esc(s?.note || '')}</textarea>
     <div class="btns"><button type="button" class="btn sec" data-act="close">Annuler</button><button class="btn" type="submit">Enregistrer</button></div>
     ${s ? '<div class="btns"><button type="button" class="btn danger" data-act="delete-session">Supprimer cette séance</button></div>' : ''}
@@ -227,9 +225,8 @@ function refreshHints() {
       ? `✅ Objectif atteint${dist > prev.distance ? ` (+${dist - prev.distance} m)` : ''}`
       : `⚠️ ${prev.distance - dist} m de moins que la séance précédente`;
   } else ev.hidden = true;
-  const str = $('#f-str').value;
-  const sps = Number($('#dlg').dataset.sps);
-  $('#h-sec').textContent = str !== '' ? `≈ ${fmtDuration(estSeconds(str, sps))} sous l'eau (à ${num(sps)} s par mouvement)` : '';
+  const sec = $('#f-sec').value;
+  $('#h-sec').textContent = sec !== '' ? `= ${fmtDuration(Math.round(Number(sec)))}` : `Convertis à ${num(Number($('#dlg').dataset.sps))} s par mouvement`;
 }
 
 function submitForm(e) {
@@ -238,18 +235,18 @@ function submitForm(e) {
   const date = $('#f-date').value;
   const distance = Math.round(Number($('#f-dist').value));
   if (!date || !(distance > 0)) return;
-  const strRaw = $('#f-str').value;
-  const strokes = strRaw === '' ? null : Math.max(0, Math.round(Number(strRaw)));
+  const secRaw = $('#f-sec').value;
+  const seconds = secRaw === '' ? null : Math.max(0, Math.round(Number(secRaw)));
   const orig = dlg.dataset.orig;
   if (date !== orig && sessionOn(date) && !confirm(`Une séance existe déjà le ${fmtDate(date)}. La remplacer ?`)) return;
 
   const before = records({ sessions: db.sessions.filter(x => x.id !== orig && x.id !== date) });
   if (orig && orig !== date) deleteSession(orig);
-  saveSession({ id: date, date, distance, strokes, secPerStroke: Number(dlg.dataset.sps), note: $('#f-note').value.trim() });
+  saveSession({ id: date, date, distance, seconds, note: $('#f-note').value.trim() });
   dlg.close();
   const rec = [];
   if (!before.dist || distance > before.dist.distance) rec.push('distance');
-  if (strokes != null && (!before.str || strokes > before.str.strokes)) rec.push('apnée');
+  if (seconds != null && (!before.str || seconds > before.str.seconds)) rec.push('apnée');
   toast(rec.length && before.dist ? `🏆 Nouveau record de ${rec.join(' et ')} !` : 'Séance enregistrée');
   month = date.slice(0, 7);
   render();
@@ -317,7 +314,7 @@ async function sync() {
     serverRev = r.rev;
     markSync(true);
     if (r.data) {
-      db = mergeDb(db, r.data);
+      db = normalizeDb(mergeDb(db, r.data));
       persist();
       if (!$('#dlg').open) render();
     }
@@ -359,7 +356,7 @@ async function importFile(file) {
     const now = Date.now();
     const incoming = { sessions: d.sessions.filter(s => s && s.id && s.date).map(s => ({ ...s, updatedAt: now })), settings: db.settings };
     if (!confirm(`Importer ${incoming.sessions.filter(s => !s.deleted).length} séance(s) ? Elles remplaceront les séances du même jour.`)) return;
-    db = mergeDb(db, incoming);
+    db = normalizeDb(mergeDb(db, incoming));
     save(); render();
     toast('Sauvegarde importée');
   } catch (e) { toast('Fichier non reconnu'); }
@@ -422,7 +419,13 @@ document.addEventListener('click', e => {
   if (el && actions[el.dataset.act]) actions[el.dataset.act](el);
 });
 document.addEventListener('submit', e => { if (e.target.id === 'sform') submitForm(e); });
-document.addEventListener('input', e => { if (['f-date', 'f-dist', 'f-str'].includes(e.target.id)) refreshHints(); });
+document.addEventListener('input', e => {
+  if (e.target.id === 'f-str') { // conversion mouvements -> secondes (seules les secondes sont gardées)
+    const n = e.target.value;
+    $('#f-sec').value = n === '' ? '' : estSeconds(n, $('#dlg').dataset.sps);
+  }
+  if (['f-date', 'f-dist', 'f-str', 'f-sec'].includes(e.target.id)) refreshHints();
+});
 document.addEventListener('change', e => {
   if (e.target.id === 'f-date') refreshHints();
   if (e.target.id === 'sps') {
