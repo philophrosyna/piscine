@@ -1,0 +1,15 @@
+{
+  "name": "Piscine",
+  "short_name": "Piscine",
+  "description": "Suivi de mes séances de natation",
+  "lang": "fr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f8fa",
+  "theme_color": "#f3f8fa",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
