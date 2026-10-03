@@ -5,25 +5,39 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Piscine</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#f3f8fa" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0f1a1f" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0e7c9b" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b4a5e" media="(prefers-color-scheme: dark)">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Piscine">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<header id="top"><h1 id="title"></h1></header>
+<header id="top">
+  <button id="back" class="iconbtn" aria-label="Retour" hidden>
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+  </button>
+  <h1 id="title"></h1>
+  <button id="gear" class="iconbtn" aria-label="Paramètres">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+  </button>
+  <svg class="waves" viewBox="0 0 400 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 22c33 0 33-12 67-12s33 12 66 12 33-12 67-12 33 12 67 12 33-12 66-12 33 12 67 12v18H0z"/></svg>
+</header>
 <div id="banner" hidden></div>
 <main id="view"></main>
 <button id="fab" aria-label="Ajouter une séance">+</button>
 <nav id="tabs">
-  <button data-tab="cal">Calendrier</button>
-  <button data-tab="stats">Statistiques</button>
-  <button data-tab="settings">Réglages</button>
+  <button data-tab="cal">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>
+    <span>Calendrier</span>
+  </button>
+  <button data-tab="stats">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>
+    <span>Statistiques</span>
+  </button>
 </nav>
 <div id="toast" hidden></div>
 <dialog id="dlg"></dialog>

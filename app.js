@@ -50,6 +50,7 @@ const sessionOn = date => liveSessions(db).find(s => s.date === date);
 
 /* ---------- Interface ---------- */
 let tab = 'cal';
+let lastTab = 'cal'; // onglet où revenir depuis les paramètres
 let month = today().slice(0, 7); // AAAA-MM
 
 function toast(msg) {
@@ -60,19 +61,22 @@ function toast(msg) {
 }
 
 function render() {
-  const titles = { cal: 'Piscine', stats: 'Statistiques', settings: 'Réglages' };
+  const titles = { cal: 'Piscine', stats: 'Statistiques', settings: 'Paramètres' };
   $('#title').textContent = titles[tab];
   $('#view').innerHTML = tab === 'cal' ? viewCal() : tab === 'stats' ? viewStats() : viewSettings();
   document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
-  $('#fab').hidden = tab === 'settings';
+  const inSettings = tab === 'settings';
+  $('#fab').hidden = inSettings;
+  $('#gear').hidden = inSettings;
+  $('#back').hidden = !inSettings;
 }
 
 /* ----- Calendrier ----- */
 function nextGoal() {
   const list = liveSessions(db);
   const last = list[list.length - 1];
-  if (!last) return `<div class="card goal"><div><b>Bienvenue !</b><div class="note">Note ta première séance avec le bouton +.</div></div></div>`;
-  return `<div class="card goal"><div class="big">${last.distance} m</div>
+  if (!last) return `<div class="card goal"><div class="emoji">🏊</div><div><b>Bienvenue !</b><div class="note">Note ta première séance avec le bouton +.</div></div></div>`;
+  return `<div class="card goal"><div class="big">${last.distance}<small> m</small></div>
     <div><b>Objectif de la prochaine séance</b><div class="note">Au moins autant que le ${esc(fmtDate(last.date))}</div></div></div>`;
 }
 
@@ -120,7 +124,9 @@ function chart(points, unit) {
     return `<circle class="dot ${rec ? 'rec' : ''}" cx="${x(i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="3.2"><title>${esc(p.label)} : ${p.v} ${unit}</title></circle>`;
   }).join('');
   const grid = [0, top / 2, top].map(v => `<line class="axis" x1="${pl}" x2="${W - pr}" y1="${y(v)}" y2="${y(v)}"/><text x="${pl - 4}" y="${y(v) + 3}" text-anchor="end">${Math.round(v)}</text>`).join('');
-  const line = points.length > 1 ? `<polyline class="line" points="${points.map((p, i) => `${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ')}"/>` : '';
+  const pts = points.map((p, i) => `${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
+  const line = points.length > 1
+    ? `<polygon class="area" points="${x(0).toFixed(1)},${y(0)} ${pts} ${x(points.length - 1).toFixed(1)},${y(0)}"/><polyline class="line" points="${pts}"/>` : '';
   const first = points[0].label, last = points[points.length - 1].label;
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Évolution (${unit})">${grid}${line}${dots}
     <text x="${pl}" y="${H - 6}">${esc(first)}</text>${points.length > 1 ? `<text x="${W - pr}" y="${H - 6}" text-anchor="end">${esc(last)}</text>` : ''}</svg>
@@ -151,8 +157,8 @@ function viewStats() {
   return `<div class="card stats3">
       <div><b>${list.length}</b><span>séances</span></div><div><b>${totalDist} m</b><span>au total</span></div><div><b>${streak(db)}</b><span>d'affilée sans recul</span></div></div>
     <div class="card"><h2>Records</h2>
-      <div>Distance : <b>${rec.dist.distance} m</b> <span class="note">(${esc(fmtDate(rec.dist.date))})</span></div>
-      <div>Tête sous l'eau : ${rec.str ? `<b>${rec.str.strokes} mouvements</b> <span class="note">≈ ${esc(fmtDuration(strSec))} (${esc(fmtDate(rec.str.date))})</span>` : '<span class="note">pas encore noté</span>'}</div></div>
+      <div class="rec-row"><span class="ico">🏆</span><div>Distance : <b>${rec.dist.distance} m</b><div class="note">${esc(fmtDate(rec.dist.date))}</div></div></div>
+      <div class="rec-row"><span class="ico">🫧</span><div>Tête sous l'eau : ${rec.str ? `<b>${rec.str.strokes} mouvements</b><div class="note">≈ ${esc(fmtDuration(strSec))} · ${esc(fmtDate(rec.str.date))}</div>` : '<span class="note">pas encore noté</span>'}</div></div></div>
     <div class="card"><h2>Distance par séance (m)</h2>${chart(recent.map(s => ({ label: fmtShort(s.date), v: s.distance })), 'm')}</div>
     <div class="card"><h2>Mouvements tête sous l'eau</h2>${chart(withStr.map(s => ({ label: fmtShort(s.date), v: s.strokes })), 'mouvements')}</div>
     <div class="card"><h2>Par mois</h2><table class="months"><tr><th>Mois</th><th>Séances</th><th>Total</th><th>Moyenne</th></tr>${rows}</table></div>`;
@@ -408,7 +414,9 @@ const actions = {
 
 document.addEventListener('click', e => {
   const tabBtn = e.target.closest('#tabs button');
-  if (tabBtn) { tab = tabBtn.dataset.tab; render(); window.scrollTo(0, 0); return; }
+  if (tabBtn) { tab = lastTab = tabBtn.dataset.tab; render(); window.scrollTo(0, 0); return; }
+  if (e.target.closest('#gear')) { tab = 'settings'; render(); window.scrollTo(0, 0); return; }
+  if (e.target.closest('#back')) { tab = lastTab; render(); window.scrollTo(0, 0); return; }
   if (e.target.closest('#fab')) { openForm(today()); return; }
   const el = e.target.closest('[data-act]');
   if (el && actions[el.dataset.act]) actions[el.dataset.act](el);
